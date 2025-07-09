@@ -3,14 +3,20 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  {
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
-    "dev:frontend": "vite",
+    "dev:frontend": "cd client && npm run dev",
     "dev:backend": "NODE_ENV=development tsx server/index.ts",
     "dev:all": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    
+    "build:frontend": "cd client && npm run build",
+    "build:backend": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npm run build:frontend && npm run build:backend",
+    
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc"
+  }
 }
   "dependencies": {
     "@aws-sdk/client-s3": "^3.842.0",
