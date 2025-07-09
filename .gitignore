@@ -153,3 +153,5 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.tempomnisaas-firebase-adminsdk-fbsvc-*.json
+config/*.json
+*.json
