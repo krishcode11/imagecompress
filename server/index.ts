@@ -1,6 +1,39 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Handle Google Cloud credentials
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  // For production: Parse base64 encoded credentials from environment variable
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS.startsWith('{')) {
+    // If it's already a JSON string, write it to a temporary file
+    const fs = require('fs');
+    const path = require('path');
+    const tempFilePath = path.join(process.cwd(), 'temp-gcp-credentials.json');
+    
+    try {
+      fs.writeFileSync(tempFilePath, process.env.GOOGLE_APPLICATION_CREDENTIALS);
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = tempFilePath;
+      
+      // Clean up the temporary file when the process exits
+      process.on('exit', () => {
+        try {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        } catch (error) {
+          console.error('Error cleaning up temporary credentials file:', error);
+        }
+      });
+    } catch (error) {
+      console.error('Error writing Google Cloud credentials file:', error);
+      process.exit(1);
+    }
+  }
+  // For local development: The environment variable already points to the credentials file
+} else {
+  console.warn('GOOGLE_APPLICATION_CREDENTIALS environment variable is not set. Google Cloud services may not work correctly.');
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { fileURLToPath } from 'url';
 
