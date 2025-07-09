@@ -1,34 +1,58 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Handle Google Cloud credentials for both local and production
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GOOGLE_APPLICATION_CREDENTIALS.startsWith('./')) {
-  try {
-    // If it's not a file path, treat it as base64 encoded JSON
-    const credentials = JSON.parse(Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'base64').toString('utf-8'));
-    
-    // Write to temporary file for Google Cloud SDK
-    const fs = require('fs');
-    const path = require('path');
-    const tempFilePath = path.join(process.cwd(), 'temp-gcp-credentials.json');
-    
-    fs.writeFileSync(tempFilePath, JSON.stringify(credentials, null, 2));
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempFilePath;
-    
-    // Clean up on exit
-    process.on('exit', () => {
-      try {
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
-        }
-      } catch (error) {
-        console.error('Error cleaning up credentials file:', error);
-      }
-    });
-  } catch (error) {
-    console.error('Error processing Google Cloud credentials:', error);
+// Handle Google Cloud credentials
+const setupGoogleCredentials = async () => {
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.warn('GOOGLE_APPLICATION_CREDENTIALS environment variable is not set. Google Cloud services may not work correctly.');
+    return;
   }
-}
+
+  // For production: Parse base64 encoded credentials from environment variable
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS.startsWith('{')) {
+    try {
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
+      const tempFilePath = path.join(process.cwd(), 'temp-gcp-credentials.json');
+      
+      try {
+        // Write the credentials to a temporary file
+        await fs.writeFile(tempFilePath, Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'base64').toString('utf-8'));
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = tempFilePath;
+        
+        // Clean up the temporary file when the process exits
+        process.on('exit', async () => {
+          try {
+            if (await fs.access(tempFilePath).then(() => true).catch(() => false)) {
+              await fs.unlink(tempFilePath);
+            }
+          } catch (error) {
+            console.error('Error cleaning up temporary credentials file:', error);
+          }
+        });
+      } catch (error) {
+        console.error('Error writing temporary credentials file:', error);
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error('Error setting up Google Cloud credentials:', error);
+      process.exit(1);
+    }
+  } else {
+    // For local development: The environment variable already points to the credentials file
+    console.log('Using Google Cloud credentials from file');
+  }
+};
+
+// Initialize Google Cloud credentials in an async IIFE
+(async () => {
+  try {
+    await setupGoogleCredentials();
+  } catch (error) {
+    console.error('Failed to initialize Google Cloud credentials:', error);
+    process.exit(1);
+  }
+})();
 
 import express, { type Request, Response, NextFunction } from "express";
 import { fileURLToPath } from 'url';
