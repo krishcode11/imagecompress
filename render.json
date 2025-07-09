@@ -1,0 +1,15 @@
+{
+    "services": [
+      {
+        "name": "compressor-backend",
+        "type": "web",
+        "buildCommand": "npm install",
+        "startCommand": "npm run dev",
+        "env": {
+          "NODE_ENV": "production"
+        },
+        "instanceCount": 1,
+        "instanceType": "nano"
+      }
+    ]
+  }

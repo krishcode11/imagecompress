@@ -1,0 +1,49 @@
+[build]
+  command = "npm run build"
+  publish = "dist" # ✅ Make sure this matches your Vite build output (usually just 'dist', not 'dist/public')
+  environment = { NODE_VERSION = "18.19.1" }
+
+
+[[redirects]]
+  from = "/api/*"
+  to = "http://localhost:5000/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/server/*"
+  to = "http://localhost:5000/server/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin/*"
+  to = "http://localhost:5000/admin/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api"
+  to = "http://localhost:5000/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-XSS-Protection = "1; mode=block"
+    Cache-Control = "public, max-age=0, must-revalidate"
