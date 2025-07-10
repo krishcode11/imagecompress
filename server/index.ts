@@ -339,13 +339,38 @@ app.use(validateEnv);
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = process.env.PORT || 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-    log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    log(`Security: Helmet, CORS, Rate Limiting enabled`);
+  
+  // Force listen on all network interfaces
+  const host = '0.0.0.0';
+  
+  // Add listening event handler
+  server.on('listening', () => {
+    const addr = server.address();
+    const bind = typeof addr === 'string' 
+      ? `pipe ${addr}` 
+      : `http://${addr?.address || '0.0.0.0'}:${addr?.port || port}`;
+    console.log(`Server listening on ${bind}`);
+  });
+
+  // Override the address method to ensure it reports the correct binding
+  const originalAddress = server.address;
+  server.address = function() {
+    const addr = originalAddress.call(server);
+    if (addr && typeof addr === 'object') {
+      return { ...addr, address: '0.0.0.0' };
+    }
+    return addr;
+  };
+
+  // Force the server to listen on all interfaces
+  const serverInstance = server.listen(Number(port), '0.0.0.0', () => {
+    const addr = server.address();
+    console.log('Server address:', addr);
+    console.log(`🚀 Server is running on http://${host}:${port}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Security: Helmet, CORS, Rate Limiting enabled`);
+    console.log(`Access the app at:`);
+    console.log(`- Local: http://localhost:${port}`);
+    console.log(`- Network: Access via your machine's IP address on port ${port}`);
   });
 })();
