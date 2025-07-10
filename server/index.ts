@@ -233,7 +233,7 @@ app.use(validateEnv);
       status: 'OK', 
       message: 'Server running',
       timestamp: new Date().toISOString(),
-      port: process.env.PORT || 5000,
+      port: process.env.PORT || 1000,
       env: process.env.NODE_ENV || 'development'
     });
   });
@@ -349,7 +349,7 @@ app.use(validateEnv);
   });
 
   // Server startup
-  const PORT = Number(process.env.PORT || 5000);
+  const PORT = Number(process.env.PORT || 1000);
   
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n✅ Server running on port ${PORT}`);
