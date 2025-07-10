@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
+    "outDir": "dist",
     "rootDir": ".",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -18,13 +18,10 @@
     "allowJs": true
   },
   "include": [
-    "server/**/*.ts",
-    "shared/**/*.ts"
+    "server/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "client/**"
+    "**/*.test.ts"
   ]
 }
