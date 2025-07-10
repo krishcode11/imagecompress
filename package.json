@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.14.0"
+  },
   "scripts": {
     "dev": "HOST=0.0.0.0 PORT=5000 NODE_ENV=development tsx server/index.ts",
     "dev:frontend": "vite",
