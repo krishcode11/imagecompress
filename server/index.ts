@@ -58,10 +58,6 @@ const setupGoogleCredentials = async () => {
 
 import express, { type Request, Response, NextFunction } from "express";
 import { fileURLToPath } from 'url';
-
-// Define __dirname for ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import path from 'path';
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -70,7 +66,6 @@ import { initializeSubscriptionPlans } from "./init-plans.js";
 import { getStorage } from "./storage.js";
 import { isAuthenticated, verifyFirebaseToken, setupAuth } from "./firebaseAuth.js";
 import { authRateLimiter } from "./middleware/rateLimiter.js";
-import http from 'http';
 import { errorHandler } from "./middleware/errorHandler.js";
 import { upload } from "./middleware/upload.js";
 import { validateImage } from "./middleware/imageValidation.js";
@@ -88,6 +83,10 @@ import * as imageController from "./controllers/imageController.js";
 import * as adminController from "./controllers/adminController.js";
 import * as contactController from "./controllers/contactController.js";
 import * as paymentController from "./controllers/paymentController.js";
+
+// Define __dirname for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -224,20 +223,30 @@ app.use(validateEnv);
   // Add CSRF protection
   app.use(csrfProtection);
 
-  // Create HTTP server
-  const server = http.createServer(app);
-
   // ========================
   // API Routes
   // ========================
 
-  // Health Check
+  // Health Check Routes (Primary for Render)
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'OK', 
+      message: 'Server running',
+      timestamp: new Date().toISOString(),
+      port: process.env.PORT || 5000,
+      env: process.env.NODE_ENV || 'development'
+    });
+  });
+
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV || 'development'
+    });
   });
 
   // Authentication Routes
-  // Auth Routes
   app.get('/api/auth/user', authRateLimiter, isAuthenticated, userController.getUserProfile);
   app.post('/api/auth/verify', authRateLimiter, (req, res) => res.status(200).json({ verified: true }));
   
@@ -291,16 +300,27 @@ app.use(validateEnv);
   app.post('/api/payment/success', paymentController.handlePaymentSuccess);
   app.post('/api/payment/failure', paymentController.handlePaymentFailure);
 
-  // Serve static files from the React app
-  app.use(express.static(path.join(__dirname, '../client/dist')));
+  // Setup Vite in development mode
+  if (app.get("env") === "development") {
+    console.log('🚀 Running in development mode with Vite');
+    const http = await import('http');
+    const server = http.createServer(app);
+    await setupVite(app, server);
+  } else {
+    console.log('🏗️  Running in production mode');
+    serveStatic(app);
+    
+    // Serve static files from the React app
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+    
+    // Handle React routing, return all requests to React app
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    });
+  }
 
-  // Error handling
+  // Error handling middleware
   app.use(errorHandler);
-
-  // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
 
   // Global error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -328,87 +348,21 @@ app.use(validateEnv);
     });
   });
 
-  // Setup Vite in development mode
-  if (app.get("env") === "development") {
-    console.log('🚀 Running in development mode with Vite');
-    await setupVite(app, server);
-  } else {
-    console.log('🏗️  Running in production mode');
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = process.env.PORT || 5000;
+  // Server startup
+  const PORT = Number(process.env.PORT || 5000);
   
-  // Force listen on all network interfaces
-  const host = '0.0.0.0';
-  
-  // Add listening event handler
-  server.on('listening', () => {
-    const addr = server.address();
-    const bind = typeof addr === 'string' 
-      ? `pipe ${addr}` 
-      : `http://${addr?.address || '0.0.0.0'}:${addr?.port || port}`;
-    console.log(`Server listening on ${bind}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n✅ Server running on port ${PORT}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n🔍 Development Access:`);
+      console.log(`- Local: http://localhost:${PORT}`);
+      console.log(`- Network: http://0.0.0.0:${PORT}`);
+    } else {
+      console.log(`\n🚀 Production server ready!`);
+    }
   });
 
-  // Override the address method to ensure it reports the correct binding
-  const originalAddress = server.address;
-  server.address = function() {
-    const addr = originalAddress.call(server);
-    if (addr && typeof addr === 'object') {
-      return { ...addr, address: '0.0.0.0' };
-    }
-    return addr;
-  };
-
-  // Configure server to listen on all interfaces
-  const serverInstance = server.listen(Number(port), '0.0.0.0', () => {
-    // Get the actual address the server is listening on
-    const addr = server.address();
-    const listeningAddress = typeof addr === 'string' 
-      ? addr 
-      : `${addr?.address}:${addr?.port}`;
-      
-    console.log('\n✅ Server is listening on:', listeningAddress);
-    console.log('✅ Network: 0.0.0.0 (all available network interfaces)');
-    console.log('✅ Port:', port);
-    
-    // Log network interfaces for debugging
-    console.log('\n🌐 Network Interfaces:');
-    try {
-      const ifaces = os.networkInterfaces();
-      let hasExternalIP = false;
-      
-      Object.entries(ifaces).forEach(([name, details]) => {
-        if (!details) return;
-        
-        details.forEach((iface) => {
-          if (iface.family === 'IPv4') {
-            const type = iface.internal ? 'Internal' : 'External';
-            console.log(`- ${name}: ${iface.address} (${type})`);
-            if (!iface.internal) {
-              hasExternalIP = true;
-              console.log(`  🔗 Access from network: http://${iface.address}:${port}`);
-            }
-          }
-        });
-      });
-      
-      if (!hasExternalIP) {
-        console.log('⚠️ Warning: No external network interfaces found. Server may not be accessible from other devices.');
-      }
-    } catch (error) {
-      console.error('Could not get network interfaces:', error);
-    }
-    
-    console.log(`\n🚀 Server is running on:`);
-    console.log(`- Local: http://localhost:${port}`);
-    console.log(`- Network: http://${os.hostname()}:${port}`);
-    console.log(`- All interfaces: http://0.0.0.0:${port}`);
-    console.log(`\nEnvironment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Security: Helmet, CORS, Rate Limiting enabled`);
-  });
 })();
