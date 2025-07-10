@@ -8,14 +8,25 @@ node -v
 npm -v
 ls -la
 
+# Install Node.js version if needed
+NODE_VERSION=$(cat .nvmrc 2>/dev/null || echo "18.x")
+if ! node -v | grep -q "v$NODE_VERSION"; then
+    echo "Node.js version $NODE_VERSION is required"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm install $NODE_VERSION
+    nvm use $NODE_VERSION
+fi
+
 # Install dependencies
 echo "=== Installing Dependencies ==="
 npm ci --production=false
 
-# Install tsx globally if not present
-if ! command -v tsx &> /dev/null; then
-    echo "tsx not found, installing globally..."
-    npm install -g tsx
+# Install tsx as a dev dependency if not present
+if ! npm list tsx &>/dev/null; then
+    echo "Installing tsx as dev dependency..."
+    npm install --save-dev tsx
 fi
 
 # Build the application
@@ -38,5 +49,8 @@ if [ ! -f "dist/server/index.js" ]; then
   ls -la dist/
   exit 1
 fi
+
+# Make sure all files are readable
+chmod -R a+rX .
 
 echo "=== Build completed successfully ==="
