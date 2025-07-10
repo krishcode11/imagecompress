@@ -9,15 +9,27 @@ npm -v
 ls -la
 
 # Install Node.js version if needed
-NODE_VERSION=$(cat .nvmrc 2>/dev/null || echo "18.x")
-if ! node -v | grep -q "v$NODE_VERSION"; then
-    echo "Node.js version $NODE_VERSION is required"
+NODE_VERSION=$(cat .nvmrc 2>/dev/null || echo "20.x")
+echo "Required Node.js version: $NODE_VERSION"
+
+# Install NVM if not present
+export NVM_DIR="$HOME/.nvm"
+if [ ! -d "$NVM_DIR" ]; then
+    echo "Installing NVM..."
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+fi
+
+# Load NVM
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Install and use the required Node.js version
+if ! nvm use $NODE_VERSION 2>/dev/null; then
+    echo "Installing Node.js $NODE_VERSION..."
     nvm install $NODE_VERSION
     nvm use $NODE_VERSION
 fi
+
+echo "Using Node.js $(node -v)"
 
 # Install dependencies
 echo "=== Installing Dependencies ==="
