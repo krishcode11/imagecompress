@@ -364,27 +364,42 @@ app.use(validateEnv);
     return addr;
   };
 
-  // Force the server to listen on all interfaces
+  // Configure server to listen on all interfaces
   const serverInstance = server.listen(Number(port), '0.0.0.0', () => {
+    // Get the actual address the server is listening on
     const addr = server.address();
-    console.log('Server address:', addr);
+    const listeningAddress = typeof addr === 'string' 
+      ? addr 
+      : `${addr?.address}:${addr?.port}`;
+      
+    console.log('\n✅ Server is listening on:', listeningAddress);
+    console.log('✅ Network: 0.0.0.0 (all available network interfaces)');
+    console.log('✅ Port:', port);
     
-    // Log network interfaces
-    console.log('\n🌐 Network Configuration:');
+    // Log network interfaces for debugging
+    console.log('\n🌐 Network Interfaces:');
     try {
       const ifaces = os.networkInterfaces();
+      let hasExternalIP = false;
       
-      console.log('Available network interfaces:');
-      Object.keys(ifaces).forEach(ifname => {
-        const iface = ifaces[ifname];
-        if (iface) {
-          iface.forEach(ifaceInfo => {
-            if (ifaceInfo.family === 'IPv4' && !ifaceInfo.internal) {
-              console.log(`- ${ifname}: ${ifaceInfo.address}`);
+      Object.entries(ifaces).forEach(([name, details]) => {
+        if (!details) return;
+        
+        details.forEach((iface) => {
+          if (iface.family === 'IPv4') {
+            const type = iface.internal ? 'Internal' : 'External';
+            console.log(`- ${name}: ${iface.address} (${type})`);
+            if (!iface.internal) {
+              hasExternalIP = true;
+              console.log(`  🔗 Access from network: http://${iface.address}:${port}`);
             }
-          });
-        }
+          }
+        });
       });
+      
+      if (!hasExternalIP) {
+        console.log('⚠️ Warning: No external network interfaces found. Server may not be accessible from other devices.');
+      }
     } catch (error) {
       console.error('Could not get network interfaces:', error);
     }
