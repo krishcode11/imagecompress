@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+import * as os from 'os';
+
 dotenv.config();
 
 // Handle Google Cloud credentials
@@ -366,11 +368,32 @@ app.use(validateEnv);
   const serverInstance = server.listen(Number(port), '0.0.0.0', () => {
     const addr = server.address();
     console.log('Server address:', addr);
-    console.log(`🚀 Server is running on http://${host}:${port}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Security: Helmet, CORS, Rate Limiting enabled`);
-    console.log(`Access the app at:`);
+    
+    // Log network interfaces
+    console.log('\n🌐 Network Configuration:');
+    try {
+      const ifaces = os.networkInterfaces();
+      
+      console.log('Available network interfaces:');
+      Object.keys(ifaces).forEach(ifname => {
+        const iface = ifaces[ifname];
+        if (iface) {
+          iface.forEach(ifaceInfo => {
+            if (ifaceInfo.family === 'IPv4' && !ifaceInfo.internal) {
+              console.log(`- ${ifname}: ${ifaceInfo.address}`);
+            }
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Could not get network interfaces:', error);
+    }
+    
+    console.log(`\n🚀 Server is running on:`);
     console.log(`- Local: http://localhost:${port}`);
-    console.log(`- Network: Access via your machine's IP address on port ${port}`);
+    console.log(`- Network: http://${os.hostname()}:${port}`);
+    console.log(`- All interfaces: http://0.0.0.0:${port}`);
+    console.log(`\nEnvironment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Security: Helmet, CORS, Rate Limiting enabled`);
   });
 })();
